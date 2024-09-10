@@ -1,0 +1,80 @@
+.tableContainer {
+  background-color: white;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.tableInfo {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  color: #666;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.table {
+  position: relative;
+  margin: 0 auto;
+  width: 100%;
+  height: 300px; /* Increased height to accommodate more seats */
+  overflow: hidden; /* Hide overflow */
+}
+
+.tableSurface {
+  background-color: #ffd1dc;
+  border: 2px solid #d23669;
+  position: absolute;
+  top: 10%;
+  left: 10%;
+  right: 10%;
+  bottom: 10%;
+  border-radius: 8px;
+}
+
+.circle .tableSurface {
+  border-radius: 50%;
+}
+
+.seat {
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  background-color: #fff;
+  border: 2px solid #d23669;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: transform 0.3s;
+  transform: translate(-50%, -50%);
+}
+
+.seat:hover {
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+.guest {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  font-size: 0.6rem;
+  padding: 2px;
+  text-align: center;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.guestBrideFamily { background-color: #ff69b4; }
+.guestGroomFamily { background-color: #4169e1; }
+.guestBrideFriends { background-color: #ff1493; }
+.guestGroomFriends { background-color: #1e90ff; }
+.guestCommonFriends { background-color: #32cd32; }

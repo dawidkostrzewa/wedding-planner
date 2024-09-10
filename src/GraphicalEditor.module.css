@@ -1,0 +1,163 @@
+.graphicalEditor {
+  background-color: #fff5f5;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-family: 'Montserrat', sans-serif;
+  color: #4a4a4a;
+}
+
+.title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 2.5rem;
+  color: #d23669;
+  text-align: center;
+  margin: 1rem 0;
+}
+
+.controls {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 2rem 1rem;
+}
+
+.guestControls, .tableControls, .variantControls {
+  display: flex;
+  gap: 1rem;
+}
+
+.input {
+  padding: 0.5rem;
+  border: 1px solid #ffc0cb;
+  border-radius: 4px;
+  font-family: 'Montserrat', sans-serif;
+  background-color: #fff5f5;
+  color: #4a4a4a;
+}
+
+.input::placeholder {
+  color: #b5838d;
+}
+
+select.input {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23d23669' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.7rem top 50%;
+  background-size: 0.65rem auto;
+  padding-right: 2rem;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #d23669;
+  box-shadow: 0 0 0 2px rgba(210, 54, 105, 0.2);
+}
+
+.button {
+  background-color: #d23669;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 600;
+}
+
+.button:hover {
+  background-color: #b52c5b;
+}
+
+.editorArea {
+  display: flex;
+  gap: 2rem;
+  flex: 1;
+  overflow: hidden;
+  padding: 0 2rem 2rem;
+}
+
+.guestList {
+  flex: 0 0 300px;
+  overflow-y: auto;
+  background-color: #fff0f5;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.guestCategory {
+  margin-bottom: 1rem;
+}
+
+.guestCategoryTitle {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.3rem;
+  color: #d23669;
+  margin-bottom: 0.5rem;
+}
+
+.guestItem {
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  color: white;
+  font-size: 0.8rem;
+}
+
+.guestItem span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.guestItem button {
+  background-color: rgba(255, 255, 255, 0.3);
+  border: none;
+  color: white;
+  font-size: 0.7rem;
+  padding: 2px 5px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.guestItem button:hover {
+  background-color: rgba(255, 255, 255, 0.5);
+}
+
+.guestBrideFamily { background-color: #ff69b4; }
+.guestGroomFamily { background-color: #4169e1; }
+.guestBrideFriends { background-color: #ff1493; }
+.guestGroomFriends { background-color: #1e90ff; }
+.guestCommonFriends { background-color: #32cd32; }
+
+.tableSection {
+  flex: 1;
+  overflow-y: auto;
+  background-color: #fff0f5;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.tableGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.variantControls {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.autoAssignButton {
+  margin: 1rem 2rem;
+}

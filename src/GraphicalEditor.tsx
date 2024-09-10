@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Table from './Table';
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
+import styles from './GraphicalEditor.module.css';
 
 interface GuestType {
   id: string;
@@ -30,7 +31,7 @@ const GraphicalEditor: React.FC = () => {
   const [newGuestName, setNewGuestName] = useState('');
   const [newTableShape, setNewTableShape] = useState<'rectangle' | 'circle'>('rectangle');
   const [newTableCapacity, setNewTableCapacity] = useState(8);
-const [guestAssignments, setGuestAssignments] = useState<{ [tableId: string]: { [position: string]: string } }>({});
+  const [guestAssignments, setGuestAssignments] = useState<{ [tableId: string]: { [position: string]: string } }>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [editingGuest, setEditingGuest] = useState<string | null>(null);
   const [categorizedGuests, setCategorizedGuests] = useState<GuestType[]>([]);
@@ -43,12 +44,6 @@ const [guestAssignments, setGuestAssignments] = useState<{ [tableId: string]: { 
     loadGuestsFromFiles();
     loadVariantsFromLocalStorage();
   }, []);
-
-//   useEffect(() => {
-//     if (categorizedGuests.length > 0) {
-//       createTablesForGuests();
-//     }
-//   }, [categorizedGuests]);
 
   const loadGuestsFromFiles = async () => {
     const categories = [
@@ -185,41 +180,39 @@ const [guestAssignments, setGuestAssignments] = useState<{ [tableId: string]: { 
   };
 
   const handleGuestAssignment = (tableId: string, guestId: string, position: string) => {
-    const newAssignments = { ...guestAssignments };
-    const table = tables.find(t => t.id === tableId);
-    
-    if (!table) return;
-
-    // Remove guest from previous assignment
-    Object.keys(newAssignments).forEach(tId => {
-      Object.keys(newAssignments[tId] || {}).forEach(pos => {
-        if (newAssignments[tId][pos] === guestId) {
-          delete newAssignments[tId][pos];
-        }
+    setGuestAssignments(prev => {
+      const newAssignments = { ...prev };
+      
+      // Remove guest from previous assignment
+      Object.keys(newAssignments).forEach(tId => {
+        Object.keys(newAssignments[tId] || {}).forEach(pos => {
+          if (newAssignments[tId][pos] === guestId) {
+            delete newAssignments[tId][pos];
+          }
+        });
       });
+
+      // Assign guest to new position
+      if (!newAssignments[tableId]) {
+        newAssignments[tableId] = {};
+      }
+      newAssignments[tableId][position] = guestId;
+
+      return newAssignments;
     });
 
-    // Assign guest to new position
-    if (!newAssignments[tableId]) {
-      newAssignments[tableId] = {};
-    }
-
-    newAssignments[tableId][position] = guestId;
-
-    setGuestAssignments(newAssignments);
-
     setTables(prevTables => {
-      const updatedTables = prevTables.map(table => ({
-        ...table,
-        guests: Object.entries(newAssignments[table.id] || {}).reduce((acc, [pos, gId]) => {
-          const guest = guests.find(g => g.id === gId);
+      return prevTables.map(table => {
+        if (table.id === tableId) {
+          const updatedGuests = { ...table.guests };
+          const guest = guests.find(g => g.id === guestId);
           if (guest) {
-            acc[pos] = guest;
+            updatedGuests[position] = guest;
           }
-          return acc;
-        }, {} as { [position: string]: GuestType })
-      }));
-      return updatedTables;
+          return { ...table, guests: updatedGuests };
+        }
+        return table;
+      });
     });
   };
 
@@ -438,6 +431,8 @@ const [guestAssignments, setGuestAssignments] = useState<{ [tableId: string]: { 
     localStorage.setItem('tableAssignmentVariants', JSON.stringify(updatedVariants));
     if (currentVariantId === variantId) {
       setCurrentVariantId(null);
+      setTables([]);
+      setGuestAssignments({});
     }
   };
 
@@ -450,45 +445,24 @@ const [guestAssignments, setGuestAssignments] = useState<{ [tableId: string]: { 
   ];
 
   return (
-    <div className="graphical-editor" style={{ color: 'white', padding: '20px' }}>
-      <h1>Wedding Planner</h1>
-      <div className="controls">
-        <div className="guest-controls">
+    <div className={styles.graphicalEditor}>
+      <h1 className={styles.title}>Wedding Planner</h1>
+      <div className={styles.controls}>
+        <div className={styles.guestControls}>
           <input
             type="text"
             value={newGuestName}
             onChange={(e) => setNewGuestName(e.target.value)}
             placeholder="Guest name"
+            className={styles.input}
           />
-          <button onClick={addGuest}>Add Guest</button>
-
-          {/* Variant controls */}
-      <div className="variant-controls" style={{ marginTop: '20px' }}>
-        <input
-          type="text"
-          value={newVariantName}
-          onChange={(e) => setNewVariantName(e.target.value)}
-          placeholder="Variant name"
-        />
-        <button onClick={saveCurrentVariant}>Save Current Variant</button>
-        <select
-          value={currentVariantId || ''}
-          onChange={(e) => loadVariant(e.target.value)}
-        >
-          <option value="">Select a variant (or clear tables)</option>
-          {variants.map(variant => (
-            <option key={variant.id} value={variant.id}>{variant.name}</option>
-          ))}
-        </select>
-        {currentVariantId && (
-          <button onClick={() => deleteVariant(currentVariantId)}>Delete Current Variant</button>
-        )}
-      </div>
+          <button onClick={addGuest} className={styles.button}>Add Guest</button>
         </div>
-        <div className="table-controls">
+        <div className={styles.tableControls}>
           <select
             value={newTableShape}
             onChange={(e) => setNewTableShape(e.target.value as 'rectangle' | 'circle')}
+            className={styles.input}
           >
             <option value="rectangle">Rectangle</option>
             <option value="circle">Circle</option>
@@ -498,109 +472,76 @@ const [guestAssignments, setGuestAssignments] = useState<{ [tableId: string]: { 
             value={newTableCapacity}
             onChange={(e) => setNewTableCapacity(parseInt(e.target.value))}
             min="1"
+            className={styles.input}
           />
-          <button onClick={addTable}>Add Table</button>
+          <button onClick={addTable} className={styles.button}>Add Table</button>
+        </div>
+        <div className={styles.variantControls}>
+          <input
+            type="text"
+            value={newVariantName}
+            onChange={(e) => setNewVariantName(e.target.value)}
+            placeholder="Variant name"
+            className={styles.input}
+          />
+          <button onClick={saveCurrentVariant} className={styles.button}>Save Current Variant</button>
+          <select
+            value={currentVariantId || ''}
+            onChange={(e) => loadVariant(e.target.value)}
+            className={styles.input}
+          >
+            <option value="">Select a variant (or clear tables)</option>
+            {variants.map(variant => (
+              <option key={variant.id} value={variant.id}>{variant.name}</option>
+            ))}
+          </select>
+          {currentVariantId && (
+            <button onClick={() => deleteVariant(currentVariantId)} className={styles.button}>Delete Current Variant</button>
+          )}
         </div>
       </div>
-      <div className="search-controls">
-        <input
-          type="text"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Search guests"
-        />
-      </div>
-      <div className="editor-area" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)' }}>
-        {/* Guest List */}
-        <div className="guest-list" style={{display:'grid', gridTemplateColumns:'repeat(5, 1fr)'}}>
+      <div className={styles.editorArea}>
+        <div className={styles.guestList}>
           {categories.map(category => (
-            <div key={category} style={{ flex: '1 0 18%', minWidth: '150px' }}>
-              <h3>{category.replace('guest-', '').replace('-', ' ')}</h3>
-              <div >
-                {getUnassignedGuests()
-                  .filter(guest => guest.category === category && guest.name.toLowerCase().includes(searchTerm.toLowerCase()))
-                  .map((guest) => (
-                    <div key={guest.id} className="guest-item" style={{ marginBottom: '5px' }}>
-                      {editingGuest === guest.id ? (
-                        <input
-                          value={guest.name}
-                          onChange={(e) => editGuestName(guest.id, e.target.value)}
-                          onBlur={() => setEditingGuest(null)}
-                          autoFocus
-                        />
-                      ) : (
-                        <div
-                          className={`guest-item-list ${guest.category}`}
-                          draggable
-                          onDragStart={(e) => {
-                            e.dataTransfer.setData('text', `new-guest|${guest.id}`);
-                          }}
-                          onDoubleClick={() => setEditingGuest(guest.id)}
-                          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                        >
-                          <span>{guest.name}</span>
-                          <button 
-                            onClick={() => removeGuest(guest.id)} 
-                            style={{ 
-                              fontSize: '0.8em', 
-                              padding: '2px 5px', 
-                              marginLeft: '5px',
-                              background: 'red',
-                              border: 'none',
-                              borderRadius: '3px',
-                              cursor: 'pointer'
-                            }}
-                          >
-                            X
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-              </div>
+            <div key={category} className={styles.guestCategory}>
+              <h3 className={styles.guestCategoryTitle}>{category.replace('guest-', '').replace('-', ' ')}</h3>
+              {getUnassignedGuests()
+                .filter(guest => guest.category === category)
+                .map((guest) => (
+                  <div 
+                    key={guest.id} 
+                    className={`${styles.guestItem} ${styles[`guest${guest.category.split('-')[1].charAt(0).toUpperCase() + guest.category.split('-')[1].slice(1)}${guest.category.split('-')[2].charAt(0).toUpperCase() + guest.category.split('-')[2].slice(1)}`]}`} 
+                    draggable 
+                    onDragStart={(e) => e.dataTransfer.setData('text', `new-guest|${guest.id}`)}
+                  >
+                    <span>{guest.name}</span>
+                    <button onClick={() => removeGuest(guest.id)}>X</button>
+                  </div>
+                ))}
             </div>
           ))}
         </div>
-
-        {/* Tables Section */}
-        <div className="table-section" style={{ flex: '1', maxHeight: '80vh', overflowY: 'auto' }}>
-          <div className="table-grid" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div className={styles.tableSection}>
+          <div className={styles.tableGrid}>
             {tables.map((table) => (
-              <div key={table.id} style={{ position: 'relative' }}>
-                <Table
-                  {...table}
-                  guests={getTableGuests(table.id)}
-                  onDrop={handleGuestAssignment}
-                  onUnassign={unassignGuest}
-                  onEdit={() => {}}
-                  updatePosition={() => {}}
-                />
-                <button 
-                  onClick={() => removeTable(table.id)}
-                  style={{
-                    position: 'absolute',
-                    top: '10px',
-                    right: '10px',
-                    background: 'red',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '3px',
-                    padding: '5px 10px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Remove Table
-                </button>
-              </div>
+              <Table
+                key={table.id}
+                {...table}
+                guests={getTableGuests(table.id)}
+                onDrop={handleGuestAssignment}
+                onUnassign={unassignGuest}
+                onEdit={() => {}}
+                updatePosition={() => {}}
+              />
             ))}
           </div>
         </div>
       </div>
-      <button onClick={autoAssignGuests} disabled={isLoading} style={{ marginTop: '20px' }}>
-        {isLoading ? 'Processing...' : 'Auto Assign Guests and Create Tables'}
-      </button>
-      
-      
+      <div className={styles.autoAssignButton}>
+        <button onClick={autoAssignGuests} disabled={isLoading} className={styles.button}>
+          {isLoading ? 'Processing...' : 'Auto Assign Guests and Create Tables'}
+        </button>
+      </div>
     </div>
   );
 };
