@@ -185,3 +185,42 @@ select.input {
 .removeTableButton:hover {
   background-color: #ff3333;
 }
+
+.guestImporterContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background-color: #fff0f5;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.guestImporter {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.guestImporter h4 {
+  margin: 0;
+  font-family: 'Cormorant Garamond', serif;
+  color: #d23669;
+}
+
+.guestImporter textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ffc0cb;
+  border-radius: 4px;
+  font-family: 'Montserrat', sans-serif;
+  resize: vertical;
+}
+
+.guestImporter input[type="file"] {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.9rem;
+}

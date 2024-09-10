@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Table from './Table';
+import GuestImporter from './GuestImporter';
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 import styles from './GraphicalEditor.module.css';
@@ -39,60 +40,87 @@ const GraphicalEditor: React.FC = () => {
   const [variants, setVariants] = useState<Variant[]>([]);
   const [currentVariantId, setCurrentVariantId] = useState<string | null>(null);
   const [newVariantName, setNewVariantName] = useState('');
+  const [showGuestImporter, setShowGuestImporter] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    loadGuestsFromFiles();
+    loadGuestsFromLocalStorage();
     loadVariantNamesFromLocalStorage();
   }, []);
 
-  const loadGuestsFromFiles = async () => {
-    const categories = [
-      'guest-bride-family',
-      'guest-groom-family',
-      'guest-bride-friends',
-      'guest-groom-friends',
-      'guest-common-friends'
-    ];
-    let allGuests: GuestType[] = [];
-    let groupCounter = 0;
-
-    for (const category of categories) {
-      try {
-        const response = await fetch(`/data/${category}.txt`);
-        const text = await response.text();
-        const lines = text.split(/[\n;]/).map(line => line.trim()).filter(line => line !== '');
-
-        lines.forEach(line => {
-          const names = line.split(';')
-          console.log(names);
-          if (names.length > 1) {
-            groupCounter++;
-            const currentGroup = `group_${groupCounter}`;
-            names.forEach(name => {
-              allGuests.push({
-                id: `${category}_${name.replace(/\s+/g, '_').toLowerCase()}`,
-                name,
-                category,
-                group: currentGroup
-              });
-            });
-          } else {
-            allGuests.push({
-              id: `${category}_${names[0].replace(/\s+/g, '_').toLowerCase()}`,
-              name: names[0],
-              category
-            });
-          }
-        });
-      } catch (error) {
-        console.error(`Error loading ${category} guests:`, error);
-      }
+  useEffect(() => {
+    if (guests.length > 0) {
+      saveGuestsToLocalStorage();
     }
-    console.log(allGuests);
-    setCategorizedGuests(allGuests);
-    setGuests(allGuests);
+  }, [guests]);
+
+  const loadGuestsFromLocalStorage = () => {
+    const savedGuests = localStorage.getItem('weddingGuests');
+    if (savedGuests) {
+      const parsedGuests = JSON.parse(savedGuests);
+      if (Array.isArray(parsedGuests) && parsedGuests.length > 0) {
+        setGuests(parsedGuests);
+        setCategorizedGuests(parsedGuests);
+      } else {
+        loadGuestsFromFiles();
+      }
+    } else {
+      loadGuestsFromFiles();
+    }
+  };
+
+  const saveGuestsToLocalStorage = () => {
+    localStorage.setItem('weddingGuests', JSON.stringify(guests));
+  };
+
+  const loadGuestsFromFiles = async () => {
+    // const categories = [
+    //   'guest-bride-family',
+    //   'guest-groom-family',
+    //   'guest-bride-friends',
+    //   'guest-groom-friends',
+    //   'guest-common-friends'
+    // ];
+    // let allGuests: GuestType[] = [];
+    // let groupCounter = 0;
+
+    // for (const category of categories) {
+    //   try {
+    //     const response = await fetch(`/data/${category}.txt`);
+    //     const text = await response.text();
+    //     const lines = text.split(/[\n;]/).map(line => line.trim()).filter(line => line !== '');
+
+    //     lines.forEach(line => {
+    //       const names = line.split(';')
+    //       console.log(names);
+    //       if (names.length > 1) {
+    //         groupCounter++;
+    //         const currentGroup = `group_${groupCounter}`;
+    //         names.forEach(name => {
+    //           allGuests.push({
+    //             id: `${category}_${name.replace(/\s+/g, '_').toLowerCase()}`,
+    //             name,
+    //             category,
+    //             group: currentGroup
+    //           });
+    //         });
+    //       } else {
+    //         allGuests.push({
+    //           id: `${category}_${names[0].replace(/\s+/g, '_').toLowerCase()}`,
+    //           name: names[0],
+    //           category
+    //         });
+    //       }
+    //     });
+    //   } catch (error) {
+    //     console.error(`Error loading ${category} guests:`, error);
+    //   }
+    // }
+    // console.log(allGuests);
+    // setCategorizedGuests(allGuests);
+    // setGuests(allGuests);
+    // saveGuestsToLocalStorage();
   };
 
   const createTablesForGuests = () => {
@@ -141,9 +169,10 @@ const GraphicalEditor: React.FC = () => {
       const newGuest: GuestType = { 
         id: Date.now().toString(),
         name: newGuestName.trim(),
-        category: 'guest-common-friends', // Add a default category
+        category: 'guest-common-friends',
       };
-      setGuests([...guests, newGuest]);
+      setGuests(prevGuests => [...prevGuests, newGuest]);
+      setCategorizedGuests(prevGuests => [...prevGuests, newGuest]);
       setNewGuestName('');
     }
   };
@@ -163,7 +192,8 @@ const GraphicalEditor: React.FC = () => {
   };
 
   const removeGuest = (guestId: string) => {
-    setGuests(guests.filter(guest => guest.id !== guestId));
+    setGuests(prevGuests => prevGuests.filter(guest => guest.id !== guestId));
+    setCategorizedGuests(prevGuests => prevGuests.filter(guest => guest.id !== guestId));
     setGuestAssignments(prev => {
       const newAssignments = { ...prev };
       Object.keys(newAssignments).forEach(tableId => {
@@ -384,16 +414,35 @@ const GraphicalEditor: React.FC = () => {
   const loadVariantNamesFromLocalStorage = () => {
     const savedVariantNames = localStorage.getItem('variantNames');
     if (savedVariantNames) {
-      const variantNames = JSON.parse(savedVariantNames);
-      setVariants(variantNames.map((name: string) => ({ id: name, name })));
+      try {
+        const variantNames = JSON.parse(savedVariantNames);
+        if (Array.isArray(variantNames)) {
+          setVariants(variantNames.map((name: string) => ({ 
+            id: name, 
+            name, 
+            tables: [], 
+            guestAssignments: {} 
+          })));
+        } else {
+          console.error('Invalid variantNames format in localStorage');
+          setVariants([]);
+        }
+      } catch (error) {
+        console.error('Error parsing variantNames from localStorage:', error);
+        setVariants([]);
+      }
+    } else {
+      setVariants([]);
     }
   };
 
   const saveVariantToLocalStorage = (variant: Variant) => {
     localStorage.setItem(`variant_${variant.name}`, JSON.stringify(variant));
-    const updatedVariants = [...variants, { id: variant.name, name: variant.name }];
-    setVariants(updatedVariants);
-    localStorage.setItem('variantNames', JSON.stringify(updatedVariants.map(v => v.name)));
+    setVariants(prevVariants => {
+      const updatedVariants = [...prevVariants.filter(v => v.name !== variant.name), variant];
+      localStorage.setItem('variantNames', JSON.stringify(updatedVariants.map(v => v.name)));
+      return updatedVariants;
+    });
   };
 
   const saveCurrentVariant = () => {
@@ -485,6 +534,21 @@ const GraphicalEditor: React.FC = () => {
     reader.readAsText(file);
   };
 
+  const importGuests = (category: string, newGuests: string[]) => {
+    const processedGuests = newGuests.flatMap(line => 
+      line.split(';').map(name => name.trim()).filter(name => name !== '')
+    );
+
+    const newGuestObjects = processedGuests.map(name => ({
+      id: `${category}_${name.replace(/\s+/g, '_').toLowerCase()}`,
+      name,
+      category,
+    }));
+
+    setGuests(prevGuests => [...prevGuests, ...newGuestObjects]);
+    setCategorizedGuests(prevCategorized => [...prevCategorized, ...newGuestObjects]);
+  };
+
   const categories = [
     'guest-bride-family',
     'guest-groom-family',
@@ -555,8 +619,22 @@ const GraphicalEditor: React.FC = () => {
           <button onClick={() => fileInputRef.current?.click()} className={styles.button}>
             Import Variant
           </button>
+          <button onClick={() => setShowGuestImporter(!showGuestImporter)} className={styles.button}>
+            {showGuestImporter ? 'Hide Guest Importer' : 'Show Guest Importer'}
+          </button>
         </div>
       </div>
+      {showGuestImporter && (
+        <div className={styles.guestImporterContainer}>
+          {categories.map(category => (
+            <GuestImporter
+              key={category}
+              category={category.replace('guest-', '').replace('-', ' ')}
+              onImport={(guests) => importGuests(category, guests)}
+            />
+          ))}
+        </div>
+      )}
       <div className={styles.editorArea}>
         <div className={styles.guestList}>
           {categories.map(category => (
