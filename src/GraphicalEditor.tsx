@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Table from './Table';
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
@@ -40,9 +40,11 @@ const GraphicalEditor: React.FC = () => {
   const [currentVariantId, setCurrentVariantId] = useState<string | null>(null);
   const [newVariantName, setNewVariantName] = useState('');
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     loadGuestsFromFiles();
-    loadVariantsFromLocalStorage();
+    loadVariantNamesFromLocalStorage();
   }, []);
 
   const loadGuestsFromFiles = async () => {
@@ -372,33 +374,32 @@ const GraphicalEditor: React.FC = () => {
   };
 
   const removeTable = (tableId: string) => {
-    // Remove the table from the tables array
     setTables(prevTables => prevTables.filter(table => table.id !== tableId));
-
-    // Remove the table's assignments from guestAssignments
     setGuestAssignments(prevAssignments => {
       const { [tableId]: removedTable, ...remainingAssignments } = prevAssignments;
       return remainingAssignments;
     });
   };
 
-  const loadVariantsFromLocalStorage = () => {
-    const savedVariants = localStorage.getItem('tableAssignmentVariants');
-    if (savedVariants) {
-      setVariants(JSON.parse(savedVariants));
+  const loadVariantNamesFromLocalStorage = () => {
+    const savedVariantNames = localStorage.getItem('variantNames');
+    if (savedVariantNames) {
+      const variantNames = JSON.parse(savedVariantNames);
+      setVariants(variantNames.map((name: string) => ({ id: name, name })));
     }
   };
 
   const saveVariantToLocalStorage = (variant: Variant) => {
-    const updatedVariants = [...variants, variant];
+    localStorage.setItem(`variant_${variant.name}`, JSON.stringify(variant));
+    const updatedVariants = [...variants, { id: variant.name, name: variant.name }];
     setVariants(updatedVariants);
-    localStorage.setItem('tableAssignmentVariants', JSON.stringify(updatedVariants));
+    localStorage.setItem('variantNames', JSON.stringify(updatedVariants.map(v => v.name)));
   };
 
   const saveCurrentVariant = () => {
     if (newVariantName.trim()) {
       const newVariant: Variant = {
-        id: uuidv4(),
+        id: newVariantName.trim(),
         name: newVariantName.trim(),
         tables: tables,
         guestAssignments: guestAssignments,
@@ -416,8 +417,9 @@ const GraphicalEditor: React.FC = () => {
       setGuestAssignments({});
       setCurrentVariantId(null);
     } else {
-      const variant = variants.find(v => v.id === variantId);
-      if (variant) {
+      const savedVariant = localStorage.getItem(`variant_${variantId}`);
+      if (savedVariant) {
+        const variant: Variant = JSON.parse(savedVariant);
         setTables(variant.tables);
         setGuestAssignments(variant.guestAssignments);
         setCurrentVariantId(variantId);
@@ -425,15 +427,62 @@ const GraphicalEditor: React.FC = () => {
     }
   };
 
-  const deleteVariant = (variantId: string) => {
-    const updatedVariants = variants.filter(v => v.id !== variantId);
-    setVariants(updatedVariants);
-    localStorage.setItem('tableAssignmentVariants', JSON.stringify(updatedVariants));
-    if (currentVariantId === variantId) {
-      setCurrentVariantId(null);
-      setTables([]);
-      setGuestAssignments({});
+  const exportVariant = () => {
+    if (!currentVariantId) {
+      alert("Please select a variant to export.");
+      return;
     }
+
+    const savedVariant = localStorage.getItem(`variant_${currentVariantId}`);
+    if (!savedVariant) {
+      alert("Selected variant not found.");
+      return;
+    }
+
+    const variant: Variant = JSON.parse(savedVariant);
+    const dataStr = JSON.stringify(variant);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    
+    const exportFileDefaultName = `${variant.name.replace(/\s+/g, '_')}_variant.json`;
+
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+  };
+
+  const importVariant = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        const importedVariant: Variant = JSON.parse(content);
+        
+        // Validate the imported data structure
+        if (!importedVariant.id || !importedVariant.name || !importedVariant.tables || !importedVariant.guestAssignments) {
+          throw new Error("Invalid variant structure");
+        }
+
+        // Save the imported variant
+        saveVariantToLocalStorage(importedVariant);
+
+        // Load the imported variant
+        setTables(importedVariant.tables);
+        setGuestAssignments(importedVariant.guestAssignments);
+        setCurrentVariantId(importedVariant.id);
+
+        alert("Variant imported successfully!");
+      } catch (error) {
+        console.error("Error importing variant:", error);
+        alert("Error importing variant. Please check the file format.");
+      }
+    };
+    reader.readAsText(file);
   };
 
   const categories = [
@@ -495,9 +544,17 @@ const GraphicalEditor: React.FC = () => {
               <option key={variant.id} value={variant.id}>{variant.name}</option>
             ))}
           </select>
-          {currentVariantId && (
-            <button onClick={() => deleteVariant(currentVariantId)} className={styles.button}>Delete Current Variant</button>
-          )}
+          <button onClick={exportVariant} className={styles.button}>Export Variant</button>
+          <input
+            type="file"
+            accept=".json"
+            onChange={importVariant}
+            style={{ display: 'none' }}
+            ref={fileInputRef}
+          />
+          <button onClick={() => fileInputRef.current?.click()} className={styles.button}>
+            Import Variant
+          </button>
         </div>
       </div>
       <div className={styles.editorArea}>
@@ -524,15 +581,22 @@ const GraphicalEditor: React.FC = () => {
         <div className={styles.tableSection}>
           <div className={styles.tableGrid}>
             {tables.map((table) => (
-              <Table
-                key={table.id}
-                {...table}
-                guests={getTableGuests(table.id)}
-                onDrop={handleGuestAssignment}
-                onUnassign={unassignGuest}
-                onEdit={() => {}}
-                updatePosition={() => {}}
-              />
+              <div key={table.id} className={styles.tableWrapper}>
+                <Table
+                  {...table}
+                  guests={getTableGuests(table.id)}
+                  onDrop={handleGuestAssignment}
+                  onUnassign={unassignGuest}
+                  onEdit={() => {}}
+                  updatePosition={() => {}}
+                />
+                <button 
+                  className={`${styles.button} ${styles.removeTableButton}`}
+                  onClick={() => removeTable(table.id)}
+                >
+                  Remove Table
+                </button>
+              </div>
             ))}
           </div>
         </div>
