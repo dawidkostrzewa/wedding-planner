@@ -26,14 +26,23 @@ interface Variant {
   guestAssignments: { [tableId: string]: { [position: string]: string } };
 }
 
+const categories = [
+  'guest-bride-family',
+  'guest-groom-family',
+  'guest-bride-friends',
+  'guest-groom-friends',
+  'guest-common-friends'
+];
+
 const GraphicalEditor: React.FC = () => {
   const [guests, setGuests] = useState<GuestType[]>([]);
   const [tables, setTables] = useState<TableType[]>([]);
-  const [newGuestName, setNewGuestName] = useState('');
+  const [newGuestNames, setNewGuestNames] = useState<{ [key: string]: string }>(
+    categories.reduce((acc, category) => ({ ...acc, [category]: '' }), {})
+  );
   const [newTableShape, setNewTableShape] = useState<'rectangle' | 'circle'>('rectangle');
   const [newTableCapacity, setNewTableCapacity] = useState(8);
   const [guestAssignments, setGuestAssignments] = useState<{ [tableId: string]: { [position: string]: string } }>({});
-  const [searchTerm, setSearchTerm] = useState('');
   const [editingGuest, setEditingGuest] = useState<string | null>(null);
   const [categorizedGuests, setCategorizedGuests] = useState<GuestType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -62,120 +71,17 @@ const GraphicalEditor: React.FC = () => {
       if (Array.isArray(parsedGuests) && parsedGuests.length > 0) {
         setGuests(parsedGuests);
         setCategorizedGuests(parsedGuests);
-      } else {
-        loadGuestsFromFiles();
       }
-    } else {
-      loadGuestsFromFiles();
-    }
+    } 
   };
 
   const saveGuestsToLocalStorage = () => {
     localStorage.setItem('weddingGuests', JSON.stringify(guests));
   };
 
-  const loadGuestsFromFiles = async () => {
-    // const categories = [
-    //   'guest-bride-family',
-    //   'guest-groom-family',
-    //   'guest-bride-friends',
-    //   'guest-groom-friends',
-    //   'guest-common-friends'
-    // ];
-    // let allGuests: GuestType[] = [];
-    // let groupCounter = 0;
+ 
 
-    // for (const category of categories) {
-    //   try {
-    //     const response = await fetch(`/data/${category}.txt`);
-    //     const text = await response.text();
-    //     const lines = text.split(/[\n;]/).map(line => line.trim()).filter(line => line !== '');
-
-    //     lines.forEach(line => {
-    //       const names = line.split(';')
-    //       console.log(names);
-    //       if (names.length > 1) {
-    //         groupCounter++;
-    //         const currentGroup = `group_${groupCounter}`;
-    //         names.forEach(name => {
-    //           allGuests.push({
-    //             id: `${category}_${name.replace(/\s+/g, '_').toLowerCase()}`,
-    //             name,
-    //             category,
-    //             group: currentGroup
-    //           });
-    //         });
-    //       } else {
-    //         allGuests.push({
-    //           id: `${category}_${names[0].replace(/\s+/g, '_').toLowerCase()}`,
-    //           name: names[0],
-    //           category
-    //         });
-    //       }
-    //     });
-    //   } catch (error) {
-    //     console.error(`Error loading ${category} guests:`, error);
-    //   }
-    // }
-    // console.log(allGuests);
-    // setCategorizedGuests(allGuests);
-    // setGuests(allGuests);
-    // saveGuestsToLocalStorage();
-  };
-
-  const createTablesForGuests = () => {
-    const totalGuests = categorizedGuests.length;
-    let remainingGuests = totalGuests;
-    const newTables: TableType[] = [];
-
-    let tableCounter = 0;
-    while (remainingGuests > 0) {
-      if (remainingGuests >= 16) {
-        // Create a rectangular table for 16-20 guests
-        newTables.push({
-          id: `table_${tableCounter}`,
-          shape: 'rectangle',
-          capacity: 20,
-          guests: {},
-        });
-        remainingGuests -= 20;
-      } else if (remainingGuests >= 6) {
-        // Create a circular table for 6-8 guests
-        newTables.push({
-          id: `table_${tableCounter}`,
-          shape: 'circle',
-          capacity: 8,
-          guests: {},
-        });
-        remainingGuests -= 8;
-      } else {
-        // Create a small circular table for remaining guests
-        newTables.push({
-          id: `table_${tableCounter}`,
-          shape: 'circle',
-          capacity: remainingGuests,
-          guests: {},
-        });
-        remainingGuests = 0;
-      }
-      tableCounter++;
-    }
-
-    setTables(newTables);
-  };
-
-  const addGuest = () => {
-    if (newGuestName.trim()) {
-      const newGuest: GuestType = { 
-        id: Date.now().toString(),
-        name: newGuestName.trim(),
-        category: 'guest-common-friends',
-      };
-      setGuests(prevGuests => [...prevGuests, newGuest]);
-      setCategorizedGuests(prevGuests => [...prevGuests, newGuest]);
-      setNewGuestName('');
-    }
-  };
+ 
 
   const addTable = () => {
     let adjustedCapacity = newTableCapacity;
@@ -269,118 +175,7 @@ const GraphicalEditor: React.FC = () => {
     return categorizedGuests.filter((guest) => !assignedGuestIds.has(guest.id));
   };
 
-  const editGuestName = (guestId: string, newName: string) => {
-    setGuests(guests.map(guest => 
-      guest.id === guestId ? { ...guest, name: newName } : guest
-    ));
-    setEditingGuest(null);
-  };
 
-  const autoAssignGuests = async () => {
-    setIsLoading(true);
-    const unassignedGuests = getUnassignedGuests();
-
-    const guestData = unassignedGuests.map(guest => ({
-      id: guest.id,
-      name: guest.name,
-      category: guest.category,
-      group: guest.group,
-    }));
-
-    try {
-      const response = await axios.post('https://api.openai.com/v1/chat/completions', {
-        model: "gpt-4",
-        messages: [
-          {
-            role: "system",
-            content: "You are a helpful assistant that generates seating arrangements and assigns guests to tables. Respond with a JSON object containing two properties: 'tables' (an array of table objects) and 'assignments' (an object with table IDs as keys and arrays of guest IDs as values)."
-          },
-          {
-            role: "user",
-            content: `Generate a seating arrangement for ${unassignedGuests.length} guests and assign ALL of them to tables. Each table object should have 'id', 'shape' (either 'circle' or 'rectangle'), and 'capacity' properties. Follow these rules strictly:
-            1. Circle tables have a maximum of 8 seats, rectangle tables have a maximum of 20 seats.
-            2. Create enough tables to seat ALL guests. No guest should be left unassigned.
-            3. Keep guests from the same group together if possible.
-            4. Try to seat guests from the same category together when feasible.
-            5. Friends from bride, groom, and common categories can sit together.
-            6. Maximize table utilization, but prioritize keeping groups and categories together over full table utilization.
-            7. IMPORTANT: Ensure that the total number of assigned guests matches the total number of input guests.
-            8. IMPORTANT: Make sure that one person is not assigned to multiple tables.
-
-            Guests: ${JSON.stringify(guestData)}
-
-            Return the table layout and guest assignments. Double-check that all guests are assigned before returning the result.`
-          }
-        ],
-        temperature: 0.7,
-      }, {
-        headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const aiMessage = response.data.choices[0].message.content;
-      console.log("AI Message:", aiMessage);
-
-      // Extract JSON from the code block
-      const jsonMatch = aiMessage.match(/```json\n([\s\S]*)\n```/) || aiMessage.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error("Couldn't extract JSON from AI response");
-      }
-
-      const aiResponse = JSON.parse(jsonMatch[1] || jsonMatch[0]);
-      console.log("Parsed AI Response:", aiResponse);
-
-      // Verify that all guests are assigned
-      const assignedGuestCount = Object.values(aiResponse.assignments).flat().length;
-    //   if (assignedGuestCount !== unassignedGuests.length) {
-    //     throw new Error(`Not all guests were assigned. Expected ${unassignedGuests.length}, but got ${assignedGuestCount}`);
-    //   }
-
-      // Create new tables based on AI response
-      const newTables: TableType[] = aiResponse.tables.map((table: any) => ({
-        id: table.id.toString(),
-        shape: table.shape as 'rectangle' | 'circle',
-        capacity: table.capacity,
-        guests: {},
-      }));
-
-      // Create new guest assignments based on AI response
-      const newGuestAssignments: { [tableId: string]: { [position: string]: string } } = {};
-      Object.entries(aiResponse.assignments).forEach(([tableId, guestIds]) => {
-        newGuestAssignments[tableId] = {};
-        (guestIds as string[]).forEach((guestId, index) => {
-          const positionName = generatePositionName(index);
-          newGuestAssignments[tableId][positionName] = guestId;
-        });
-      });
-
-      // Update tables with assigned guests
-      const updatedTables = newTables.map(table => ({
-        ...table,
-        guests: Object.entries(newGuestAssignments[table.id] || {}).reduce((acc, [position, guestId]) => {
-          const guest = guests.find(g => g.id === guestId);
-          if (guest) {
-            acc[position] = guest;
-          }
-          return acc;
-        }, {} as { [position: string]: GuestType })
-      }));
-
-      // Update state with new tables and assignments
-      setTables(updatedTables);
-      setGuestAssignments(newGuestAssignments);
-
-      console.log("Updated Tables:", updatedTables);
-      console.log("Updated Guest Assignments:", newGuestAssignments);
-
-    } catch (error) {
-      console.error('Error assigning guests and creating tables:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const unassignGuest = (tableId: string, position: string) => {
     setTables(prevTables => {
@@ -549,28 +344,23 @@ const GraphicalEditor: React.FC = () => {
     setCategorizedGuests(prevCategorized => [...prevCategorized, ...newGuestObjects]);
   };
 
-  const categories = [
-    'guest-bride-family',
-    'guest-groom-family',
-    'guest-bride-friends',
-    'guest-groom-friends',
-    'guest-common-friends'
-  ];
+  const addGuestToCategory = (category: string) => {
+    if (newGuestNames[category].trim()) {
+      const newGuest: GuestType = { 
+        id: uuidv4(),
+        name: newGuestNames[category].trim(),
+        category: category,
+      };
+      setGuests(prevGuests => [...prevGuests, newGuest]);
+      setCategorizedGuests(prevGuests => [...prevGuests, newGuest]);
+      setNewGuestNames(prev => ({ ...prev, [category]: '' }));
+    }
+  };
 
   return (
     <div className={styles.graphicalEditor}>
       <h1 className={styles.title}>Wedding Planner</h1>
       <div className={styles.controls}>
-        <div className={styles.guestControls}>
-          <input
-            type="text"
-            value={newGuestName}
-            onChange={(e) => setNewGuestName(e.target.value)}
-            placeholder="Guest name"
-            className={styles.input}
-          />
-          <button onClick={addGuest} className={styles.button}>Add Guest</button>
-        </div>
         <div className={styles.tableControls}>
           <select
             value={newTableShape}
@@ -640,6 +430,21 @@ const GraphicalEditor: React.FC = () => {
           {categories.map(category => (
             <div key={category} className={styles.guestCategory}>
               <h3 className={styles.guestCategoryTitle}>{category.replace('guest-', '').replace('-', ' ')}</h3>
+              <div className={styles.categoryAddGuest}>
+                <input
+                  type="text"
+                  value={newGuestNames[category]}
+                  onChange={(e) => setNewGuestNames(prev => ({ ...prev, [category]: e.target.value }))}
+                  placeholder="Guest name"
+                  className={styles.input}
+                />
+                <button 
+                  onClick={() => addGuestToCategory(category)} 
+                  className={styles.button}
+                >
+                  Add Guest
+                </button>
+              </div>
               {getUnassignedGuests()
                 .filter(guest => guest.category === category)
                 .map((guest) => (
@@ -678,11 +483,6 @@ const GraphicalEditor: React.FC = () => {
             ))}
           </div>
         </div>
-      </div>
-      <div className={styles.autoAssignButton}>
-        <button onClick={autoAssignGuests} disabled={isLoading} className={styles.button}>
-          {isLoading ? 'Processing...' : 'Auto Assign Guests and Create Tables'}
-        </button>
       </div>
     </div>
   );

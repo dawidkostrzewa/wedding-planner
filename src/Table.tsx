@@ -80,16 +80,16 @@ const Table: React.FC<TableProps> = ({ shape, capacity, guests, id, onDrop, onUn
         <span>Capacity: {capacity}</span>
         <span>Seated: {Object.keys(guests).length}</span>
       </div>
-      <div 
+      <div
         className={`${styles.table} ${styles[shape]}`}
         onDragOver={handleDragOver}
       >
         <div className={`${styles.tableSurface} ${styles[shape]}`}></div>
         {getSeatPositions().map((position, index) => {
-          const seatStyle = shape === 'circle' 
+          const seatStyle = shape === 'circle'
             ? getCirclePosition(index, capacity)
             : getRectanglePosition(index, capacity);
-          
+
           const guest = guests[position];
           return (
             <div
@@ -101,7 +101,7 @@ const Table: React.FC<TableProps> = ({ shape, capacity, guests, id, onDrop, onUn
               onClick={() => handleGuestClick(position)}
             >
               {guest ? (
-                <div 
+                <div
                   className={`${styles.guest} ${styles[`guest${guest.category.split('-')[1].charAt(0).toUpperCase() + guest.category.split('-')[1].slice(1)}${guest.category.split('-')[2].charAt(0).toUpperCase() + guest.category.split('-')[2].slice(1)}`]}`}
                   title={guest.name}
                   draggable
